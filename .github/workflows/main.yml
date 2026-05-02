@@ -1,4 +1,4 @@
-name: Simple-Tailscale-RDP
+name: Final-Tailscale-RDP
 on: workflow_dispatch
 
 jobs:
@@ -8,24 +8,26 @@ jobs:
       - name: Install Tailscale
         shell: powershell
         run: |
-          # Tailscale setup download aur install karna
+          # 1. Tailscale Download aur Install
           Invoke-WebRequest -Uri "https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe" -OutFile "tailscale-setup.exe"
           Start-Process -FilePath ".\tailscale-setup.exe" -ArgumentList "/quiet", "/norestart" -Wait
           
-          # Path update karna taake commands chalein
+          # Path update
           $env:Path += ";C:\Program Files\Tailscale"
           
-          # Simple Login (Bina Tags ke)
+          # 2. Login (Bina Tags ke simple Auth Key)
           & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TS_AUTH_KEY }} --hostname=GitHub-RDP --accept-routes
 
-      - name: Setup RDP Access
+      - name: Setup RDP and Disable Firewall
         shell: powershell
         run: |
-          # RDP settings enable karna
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          # 3. Firewall ko mukammal band karna (Ping aur RDP fix)
+          Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False
           
-          # User Setup (Error-Free logic)
+          # 4. RDP Settings enable karna
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+          
+          # 5. User Creation (Error-Free logic)
           $Password = ConvertTo-SecureString "MySafePass123!" -AsPlainText -Force
           $User = Get-LocalUser -Name "runneradmin" -ErrorAction SilentlyContinue
           if ($null -eq $User) {
@@ -39,9 +41,8 @@ jobs:
       - name: Keep Alive (6 Hours)
         shell: powershell
         run: |
-          Write-Host "RDP is now active! Connect via Tailscale IP."
+          Write-Host "RDP Active! Machine Dashboard par check karein."
           $startTime = Get-Date
-          # 6 ghante tak machine ko on rakhega
           while ((Get-Date) -lt $startTime.AddHours(5).AddMinutes(50)) {
             Write-Host "Runner is alive... $((Get-Date))"
             Start-Sleep -Seconds 60
