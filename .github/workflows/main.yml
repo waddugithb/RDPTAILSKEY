@@ -8,24 +8,21 @@ jobs:
       - name: Install Tailscale (Windows)
         shell: powershell
         run: |
-          # Tailscale download aur install karna
           Invoke-WebRequest -Uri "https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe" -OutFile "tailscale-setup.exe"
           Start-Process -FilePath ".\tailscale-setup.exe" -ArgumentList "/quiet", "/norestart" -Wait
-          
-          # Path update karna taake tailscale command chale
           $env:Path += ";C:\Program Files\Tailscale"
-          
-          # Tailscale connect karna (OAuth keys use karte hue)
-          & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TS_OAUTH_SECRET }} --hostname=GitHub-RDP --accept-routes
+          # Connecting using your new OAuth key and tag
+          & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TS_OAUTH_SECRET }} --hostname=GitHub-RDP --accept-routes --advertise-tags=tag:ci
 
-      - name: Install Chrome and Setup RDP
+      - name: Setup Chrome and RDP
         run: |
           choco install googlechrome -y
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          # Login Details
           net user runneradmin MySafePass123! /add
           net localgroup administrators runneradmin /add
-          Write-Host "User: runneradmin | Pass: MySafePass123!"
+          Write-Host "Setup Finished! User: runneradmin | Pass: MySafePass123!"
 
       - name: Keep Alive (6 Hours)
         run: |
