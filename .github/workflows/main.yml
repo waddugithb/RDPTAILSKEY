@@ -1,0 +1,48 @@
+name: Simple-Tailscale-RDP
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Install Tailscale
+        shell: powershell
+        run: |
+          # Tailscale setup download aur install karna
+          Invoke-WebRequest -Uri "https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe" -OutFile "tailscale-setup.exe"
+          Start-Process -FilePath ".\tailscale-setup.exe" -ArgumentList "/quiet", "/norestart" -Wait
+          
+          # Path update karna taake commands chalein
+          $env:Path += ";C:\Program Files\Tailscale"
+          
+          # Simple Login (Bina Tags ke)
+          & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TS_AUTH_KEY }} --hostname=GitHub-RDP --accept-routes
+
+      - name: Setup RDP Access
+        shell: powershell
+        run: |
+          # RDP settings enable karna
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          
+          # User Setup (Error-Free logic)
+          $Password = ConvertTo-SecureString "MySafePass123!" -AsPlainText -Force
+          $User = Get-LocalUser -Name "runneradmin" -ErrorAction SilentlyContinue
+          if ($null -eq $User) {
+              New-LocalUser -Name "runneradmin" -Password $Password -Description "RDP User"
+              Add-LocalGroupMember -Group "Administrators" -Member "runneradmin"
+          } else {
+              $User | Set-LocalUser -Password $Password
+          }
+          Write-Host "User: runneradmin | Pass: MySafePass123!"
+
+      - name: Keep Alive (6 Hours)
+        shell: powershell
+        run: |
+          Write-Host "RDP is now active! Connect via Tailscale IP."
+          $startTime = Get-Date
+          # 6 ghante tak machine ko on rakhega
+          while ((Get-Date) -lt $startTime.AddHours(5).AddMinutes(50)) {
+            Write-Host "Runner is alive... $((Get-Date))"
+            Start-Sleep -Seconds 60
+          }
