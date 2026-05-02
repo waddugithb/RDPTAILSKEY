@@ -1,30 +1,29 @@
-name: Tailscale-Chrome-RDP
+name: Simple-RDP
 on: workflow_dispatch
 
 jobs:
   build:
     runs-on: windows-latest
     steps:
-      - name: Install Tailscale (Windows)
+      - name: Install Tailscale
         shell: powershell
         run: |
           Invoke-WebRequest -Uri "https://pkgs.tailscale.com/stable/tailscale-setup-latest.exe" -OutFile "tailscale-setup.exe"
           Start-Process -FilePath ".\tailscale-setup.exe" -ArgumentList "/quiet", "/norestart" -Wait
           $env:Path += ";C:\Program Files\Tailscale"
-          # Connecting using your new OAuth key and tag
-          & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TS_OAUTH_SECRET }} --hostname=GitHub-RDP --accept-routes --advertise-tags=tag:ci
+          # Simple Login (No Tags)
+          & "C:\Program Files\Tailscale\tailscale.exe" up --authkey=${{ secrets.TS_AUTH_KEY }} --hostname=GitHub-RDP --accept-routes
 
       - name: Setup Chrome and RDP
         run: |
           choco install googlechrome -y
           Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
           Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          # Login Details
           net user runneradmin MySafePass123! /add
           net localgroup administrators runneradmin /add
-          Write-Host "Setup Finished! User: runneradmin | Pass: MySafePass123!"
+          Write-Host "User: runneradmin | Pass: MySafePass123!"
 
-      - name: Keep Alive (6 Hours)
+      - name: Keep Alive
         run: |
           $startTime = Get-Date
           while ((Get-Date) -lt $startTime.AddHours(5).AddMinutes(50)) {
